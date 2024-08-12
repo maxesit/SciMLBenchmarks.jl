@@ -7,6 +7,7 @@ author: Jameson Nash
 using OrdinaryDiffEq, DiffEqDevTools, Sundials, ModelingToolkit, ODEInterfaceDiffEq,
       Plots, DASSL, DASKR
 using LinearAlgebra
+using ModelingToolkit: t_nounits as t, D_nounits as D
 
 ## Setup parameter space:
 
@@ -84,33 +85,34 @@ DQ = zeros(Num, 4, 4)
 #     accelerations and multipliers consistent
 #     for linear stiffness term and no damping
 #     (ipar(1) = 0, ipar(2) = 0).
-#@variables(
+IPAR = [0,0]
+@variables(
 #    t,
-#    ϕ₁(t)=0.0,
-#    ϕ₂(t)=0.0,
-#    x₃(t)=4.500169330000000e-1,
-#    q₁(t)=0.0,
-#    q₂(t)=0.0,
-#    q₃(t)=1.033398630000000e-5,
-#    q₄(t)=1.693279690000000e-5,
-#    dϕ₁(t)= 1.500000000000000e2,
-#    dϕ₂(t)=-7.499576703969453e1,
-#    dx₃(t)=-2.689386719979040e-6,
-#    dq₁(t)= 4.448961125815990e-1,
-#    dq₂(t)= 4.634339319238670e-3,
-#    dq₃(t)=-1.785910760000550e-6,
-#    dq₄(t)=-2.689386719979040e-6,
-#    ddϕ₁(t)= 0.000000000000000e0,
-#    ddϕ₂(t)=-1.344541576709835e-3,
-#    ddx₃(t)=-5.062194924490193e+3,
-#    ddq₁(t)=-6.829725665986310e-5,
-#    ddq₂(t)= 1.813207639590617e-20,
-#    ddq₃(t)=-4.268463266810281e+0,
-#    ddq₄(t)= 2.098339029337557e-1,
-#    λ₁(t) = -6.552727150584648e-8,
-#    λ₂(t) =  3.824589509350831e+2,
-#    λ₃(t) = -4.635908708561371e-9,
-#    )
+    ϕ₁(t)=0.0,
+    ϕ₂(t)=0.0,
+    x₃(t)=4.500169330000000e-1,
+    q₁(t)=0.0,
+    q₂(t)=0.0,
+    q₃(t)=1.033398630000000e-5,
+    q₄(t)=1.693279690000000e-5,
+    dϕ₁(t)= 1.500000000000000e2,
+    dϕ₂(t)=-7.499576703969453e1,
+    dx₃(t)=-2.689386719979040e-6,
+    dq₁(t)= 4.448961125815990e-1,
+    dq₂(t)= 4.634339319238670e-3,
+    dq₃(t)=-1.785910760000550e-6,
+    dq₄(t)=-2.689386719979040e-6,
+    ddϕ₁(t)= 0.000000000000000e0,
+    ddϕ₂(t)=-1.344541576709835e-3,
+    ddx₃(t)=-5.062194924490193e+3,
+    ddq₁(t)=-6.829725665986310e-5,
+    ddq₂(t)= 1.813207639590617e-20,
+    ddq₃(t)=-4.268463266810281e+0,
+    ddq₄(t)= 2.098339029337557e-1,
+    λ₁(t) = -6.552727150584648e-8,
+    λ₂(t) =  3.824589509350831e+2,
+    λ₃(t) = -4.635908708561371e-9,
+    )
 
 
 # init1
@@ -190,7 +192,7 @@ sinp2  = sin(ϕ₂)
 cosp12 = cos(ϕ₁-ϕ₂)
 sinp12 = sin(ϕ₁-ϕ₂)
 
-D = Differential(t)
+#D = Differential(t)
 P = [ϕ₁, ϕ₂, x₃]
 Q = [q₁, q₂, q₃, q₄]
 X = [P..., Q...]
@@ -207,10 +209,10 @@ ivs = [
      D(ϕ₁) => Symbolics.getdefaultval(dϕ₁),
      D(ϕ₂) => Symbolics.getdefaultval(dϕ₂),
      D(x₃) => Symbolics.getdefaultval(dx₃),
-     D(q₁) => Symbolics.getdefaultval(q₁),
-     D(q₂) => Symbolics.getdefaultval(q₂),
-     D(q₃) => Symbolics.getdefaultval(q₃),
-     D(q₄) => Symbolics.getdefaultval(q₄),
+     D(q₁) => Symbolics.getdefaultval(dq₁),
+     D(q₂) => Symbolics.getdefaultval(dq₂),
+     D(q₃) => Symbolics.getdefaultval(dq₃),
+     D(q₄) => Symbolics.getdefaultval(dq₄),
      # Initial values acceleration variables
      D(DX[1]) => Symbolics.getdefaultval(ddϕ₁),
      D(DX[2]) => Symbolics.getdefaultval(ddϕ₂),
@@ -240,11 +242,11 @@ DQQD = zeros(Num, length(Q))
 QTBQ = zeros(Num, length(Q))
 BQQD = zeros(Num, length(Q))
 for I = 1:length(Q)
-    MQQ(I) = dot(MQ[:, I], Q)
-    KQQ(I) = dot(KQ[:, I], Q)
-    DQQD(I)= dot(DQ[:, I], QD)
-    QTBQ(I)= dot(Q, BQ[:, I])
-    BQQD(I)= dot(BQ[I, :], QD)
+    MQQ[I] = dot(MQ[:, I], Q)
+    KQQ[I] = dot(KQ[:, I], Q)
+    DQQD[I]= dot(DQ[:, I], QD)
+    QTBQ[I]= dot(Q, BQ[:, I])
+    BQQD[I]= dot(BQ[I, :], QD)
 end
 QTMQQ   = dot(Q, MQQ)
 QDTMQQ  = dot(QD, MQQ)
@@ -401,11 +403,41 @@ eqs
 Create the DAE solver:
 
 ```julia
+@mtkbuild sys = ODESystem(eqs,t)
+tspan = (0.0,0.1)
+mtkprob = ODEProblem(sys, [], tspan)
+ref_sol = solve(mtkprob, RadauIIA5())# -> retcode:initial Failure
+
+@named sys = ODESystem(eqs,t)
+simpsys = structural_simplify(sys, dummy_derivative = false)
+sys = complete(sys)
+
+# 1 -> no struc simplification
+mtkprob1 = ODEProblem(sys, [], tspan)
+ref_sol1 = solve(mtkprob1, RadauIIA5()) # -> retcode:unstable
+
+# 2 -> struc simplification with dummy_der turned off
+mtkprob2 = ODEProblem(simpsys, [], tspan)
+ref_sol2 = solve(mtkprob2, Rodas5P()) # -> retcode: initial failure
+
+
+
+daeprob = DAEProblem(sys, ivs, [], tspan)
+dae_ref_sol = solve(daeprob, IDA(), abstol = 1e-7, reltol = 1e-7)# retcode:Initial Failure
+
+
+
+###
+# Old code from here below 
+###
+
+
+
 @named sys = ODESystem(eqs, t)
 simpsys = structural_simplify(sys)
 odaeprob = ODAEProblem(simpsys,[],(0.0,0.1))
 # mmprob = ODEProblem(sys,[],(0.0,0.1))
-daeprob = DAEProblem(sys,ivs,[],(0.0,0.1))
+daeprob = DAEProblem(complete(sys),ivs,[],(0.0,0.1))
 
 probs = Any[nothing, nothing, nothing]
 refs = Any[nothing, nothing, nothing]
